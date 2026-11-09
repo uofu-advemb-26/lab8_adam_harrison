@@ -10,13 +10,10 @@
 
 static struct can2040 cbus;
 QueueHandle_t queue;
-SemaphoreHandle_t semaphore;
 
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
 {
-    xSemaphoreTake(semaphore,portMAX_DELAY);
-    xQueueSendToBackFromISR(queue, msg, portMAX_DELAY);
-    xSemaphoreGive(semaphore);
+    xQueueSendToBackFromISR(queue, &msg, NULL);
 }
 
 static void PIOx_IRQHandler(void)
@@ -46,17 +43,21 @@ void canbus_setup(void)
 void main_task(__unused void *params) 
 {
 
-    static char buffer[100];
+    struct can2040_msg msg;
 
     while(1)
     {
-        if(xQueueIsQueueEmpty(queue) == pdFALSE)
+
+        if(xQueueReceive(queue, &msg, portMAX_DELAY) == pdPASS)
         {
-            memset(buffer,0,100);
-            xSemaphoreTake(semaphore,portMAX_DELAY);
-            memcpy(buffer, xQueueReceive(queue), length);
-            xSemaphoreGive(semaphore);
-            printf(buffer);
+
+            printf("Message text: ");
+            for (int i = 0; i < msg.dlc; i++) 
+            {
+            putchar(msg.data[i]);
+            }
+            printf("\n");
+
         }
     }
 }
@@ -66,8 +67,6 @@ int main( void )
     stdio_init_all();
     canbus_setup();
     queue = xQueueCreate(100, sizeof(struct can2040_msg));
-    semaphore = xSemaphoreCreateBinary();
-    xSemaphoreGive(semaphore);
     TaskHandle_t task;
     xTaskCreate(main_task, "MainThread",
                 configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, &task);
