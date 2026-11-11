@@ -10,7 +10,7 @@ static struct can2040 cbus;
 
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
 {
-    // Put your code here....
+
 }
 
 static void PIOx_IRQHandler(void)
@@ -47,10 +47,14 @@ void main_task(__unused void *params)
         .data = {'M', 'e','s','s','a','g','e'}
     };
 
+    vTaskDelay(5000);
     while(1)
     {
-        can2040_transmit(&cbus, &msg);
+        int status;
+        status = can2040_transmit(&cbus, &msg);
         vTaskDelay(1000);
+        printf("status code %d", status);
+        printf("\n");
     }
 }
 
