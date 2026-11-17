@@ -11,10 +11,31 @@
 static struct can2040 cbus;
 QueueHandle_t queue;
 
+static volatile uint32_t rx_count = 0;   // frames received from the other pico
+static volatile uint32_t tx_count = 0;   // our frames that were sent succesfully
+static volatile uint32_t err_count = 0;  // bus errors
+static volatile uint32_t rx_dropped = 0; // rx frames lost because the queue was full
+
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
 {
-    if (notify != CAN2040_NOTIFY_RX) return;
-    xQueueSendToBackFromISR(queue, msg, NULL);
+    BaseType_t woken = pdFALSE;
+
+    if (notify == CAN2040_NOTIFY_RX)
+    {
+        rx_count++;
+        if (xQueueSendToBackFromISR(queue, msg, &woken) != pdTRUE)
+            rx_dropped++;
+    }
+    else if (notify == CAN2040_NOTIFY_TX)
+    {
+        tx_count++;
+    }
+    else if (notify == CAN2040_NOTIFY_ERROR)
+    {
+        err_count++;
+    }
+
+    portYIELD_FROM_ISR(woken);
 }
 
 static void PIOx_IRQHandler(void)
