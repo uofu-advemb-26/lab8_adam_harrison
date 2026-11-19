@@ -44,7 +44,7 @@ void main_task(__unused void *params)
 
     struct can2040_msg msg =
     {
-        .id = 0x123,
+        .id = 0x200,
         .dlc = 7,
         .data = {'M', 'e','s','s','a','g','e'}
     };
