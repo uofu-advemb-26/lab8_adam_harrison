@@ -7,10 +7,12 @@
 #include <queue.h>
 
 static struct can2040 cbus;
+QueueHandle_t queue;
 
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
 {
-
+    if (notify != CAN2040_NOTIFY_RX) return;
+    xQueueSendToBackFromISR(queue, msg, NULL);
 }
 
 static void PIOx_IRQHandler(void)
@@ -58,13 +60,38 @@ void main_task(__unused void *params)
     }
 }
 
+void rx_task(__unused void *params)
+{
+    struct can2040_msg msg;
+    printf("Main task begin\n");
+
+    while(1)
+    {
+    if(xQueueReceive(queue, &msg, portMAX_DELAY) == pdTRUE)
+        {
+        printf("Message received\n");
+        printf("id=0x%03lx dlc=%lu data:",
+            (unsigned long)(msg.id & 0x1FFFFFFF), (unsigned long)msg.dlc);
+        for(uint32_t i = 0; i < msg.dlc && i < 8; i++)
+            printf(" %02x", msg.data[i]);
+        printf("\n");
+        }
+    else{
+        printf("No message received\n");
+    }
+    }
+}
+
 int main( void )
 {
     stdio_init_all();
+    queue = xQueueCreate(100, sizeof(struct can2040_msg));
     canbus_setup();
     TaskHandle_t task;
     xTaskCreate(main_task, "MainThread",
                 configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, &task);
+    xTaskCreate(rx_task, "RxThread",
+                configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
     vTaskStartScheduler();
     return 0;
 }
