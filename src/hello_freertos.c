@@ -6,6 +6,8 @@
 #include <task.h>
 #include <queue.h>
 
+#define BUSY_WAIT_US 200
+
 static struct can2040 cbus;
 QueueHandle_t queue;
 
@@ -54,6 +56,7 @@ void main_task(__unused void *params)
     {
         int status;
         status = can2040_transmit(&cbus, &msg);
+        busy_wait_us(BUSY_WAIT_US);
         // vTaskDelay(1000);
         // printf("status code %d", status);
         // printf("\n");
