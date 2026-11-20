@@ -8,9 +8,11 @@
 
 static struct can2040 cbus;
 QueueHandle_t queue;
+volatile uint32_t tx_done_count = 0;
 
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
 {
+    if (notify == CAN2040_NOTIFY_TX) tx_done_count++;
     if (notify != CAN2040_NOTIFY_RX) return;
     xQueueSendToBackFromISR(queue, msg, NULL);
 }
@@ -63,22 +65,24 @@ void main_task(__unused void *params)
 void rx_task(__unused void *params)
 {
     struct can2040_msg msg;
+    uint32_t rx_count = 0;
+    TickType_t last_print = xTaskGetTickCount();
     printf("Main task begin\n");
 
     while(1)
     {
-    if(xQueueReceive(queue, &msg, portMAX_DELAY) == pdTRUE)
+    // Count instead of printing every frame so we can keep up with the babbler
+    if(xQueueReceive(queue, &msg, 100) == pdTRUE)
         {
-        printf("Message received\n");
-        printf("id=0x%03lx dlc=%lu data:",
-            (unsigned long)(msg.id & 0x1FFFFFFF), (unsigned long)msg.dlc);
-        for(uint32_t i = 0; i < msg.dlc && i < 8; i++)
-            printf(" %02x", msg.data[i]);
-        printf("\n");
+        rx_count++;
         }
-    else{
-        printf("No message received\n");
-    }
+    if(xTaskGetTickCount() - last_print >= 1000)
+        {
+        last_print = xTaskGetTickCount();
+        printf("rx/s=%lu tx done total=%lu\n",
+            (unsigned long)rx_count, (unsigned long)tx_done_count);
+        rx_count = 0;
+        }
     }
 }
 
