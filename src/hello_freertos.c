@@ -55,8 +55,8 @@ void main_task(__unused void *params)
         int status;
         status = can2040_transmit(&cbus, &msg);
         // vTaskDelay(1000);
-        printf("status code %d", status);
-        printf("\n");
+        // printf("status code %d", status);
+        // printf("\n");
     }
 }
 
