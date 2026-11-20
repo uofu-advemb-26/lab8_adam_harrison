@@ -33,6 +33,16 @@ else()
     set(UNITY_PATH lib/unity)
 endif()
 
+if (DEFINED CAN_PATH)
+# Already defined, e.g. -D flag
+elseif (DEFINED ENV{CAN_PATH})
+# Defined in an environment variable
+    set(CAN_PATH $ENV{CAN_PATH})
+else()
+# Use the submodule
+    set(CAN_PATH "${CMAKE_CURRENT_LIST_DIR}/can2040")
+endif()
+
 if(DEFINED ENV{OPENOCD_PATH})
     set(OPENOCD_PATH $ENV{OPENOCD_PATH})
 endif()
@@ -53,6 +63,9 @@ include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
 # This imports the library configuration for FreeRTOS
 include(${FREERTOS_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
 
+# import the CAN library
+include(${CAN_PATH}/can2040.cmake)
+
 # This sets up the unity library. They don't provide a library export, so it's defined locally.
 include(unity.cmake)
 
@@ -69,7 +82,10 @@ add_compile_definitions(
     )
 
 # This is where your project header files are located.
-include_directories(${CMAKE_CURRENT_LIST_DIR}/include)
+include_directories(
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CAN_PATH}/src
+)
 
 # The main executable is defined inside the src directory.
 add_subdirectory(src)
